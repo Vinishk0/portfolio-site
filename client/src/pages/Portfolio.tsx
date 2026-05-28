@@ -16,7 +16,7 @@ function Logo() {
 }
 
 const CATEGORY_LABELS: Record<string, string> = {
-  unity: "Unity", vr: "VR", ar: "AR", dotnet: ".NET", other: "Other",
+  unity: "Unity", vr: "VR", ar: "AR", dotnet: ".NET", simulator: "Simulator", other: "Other",
 };
 
 // ─── Cursor Glow ───────────────────────────────────────────────────────────────

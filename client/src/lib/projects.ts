@@ -11,7 +11,7 @@ export interface StaticProject {
   stack: string[];
   context?: string;
   result?: string;
-  category: "unity" | "vr" | "ar" | "dotnet" | "other";
+  category: "unity" | "vr" | "ar" | "dotnet" | "simulator" | "other" | string;
   featured: boolean;
   cover?: string;          // filename inside the project folder, e.g. "cover.jpg"
   images?: string[];       // additional image filenames
