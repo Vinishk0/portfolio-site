@@ -4,13 +4,13 @@
   "shortDescription": "Иммерсивный VR-тренажёр по стрельбе из лука с физикой реального времени",
   "fullDescription": "Полноценный VR-симулятор стрельбы из лука, разработанный для Meta Quest 2/3. Реализована физика полёта стрелы на основе траекторных уравнений, хаптическая обратная связь, адаптивные мишени с системой скоринга. Проект включает туториал-систему с постепенным усложнением и таблицу рекордов.",
   "role": "Lead Unity Developer",
-  "stack": ["Unity 2022 LTS", "C#", "OpenXR", "Meta SDK", "XR Interaction Toolkit"],
+  "stack": [ "Unity 2022 LTS", "C#", "OpenXR", "Meta SDK", "XR Interaction Toolkit" ],
   "context": "Учебный проект в рамках курса по VR-разработке. Цель — создать полноценный игровой цикл с реалистичной механикой стрельбы.",
   "result": "Рабочий VR-прототип с 3 игровыми режимами, системой скоринга и хаптическим фидбеком. Успешно протестирован на Meta Quest 2.",
   "category": "vr",
   "featured": true,
   "cover": "cover.jpg",
-  "images": ["cover.jpg"],
+  "images": [ "cover.jpg", "cover1.jpg" ],
   "githubUrl": "https://github.com/Vinishk0",
-  "youtubeUrl": ""
+  "youtubeUrl": "https://www.youtube.com/watch?v=-AZOi3kP9Js"
 }
