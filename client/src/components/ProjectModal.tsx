@@ -28,56 +28,151 @@ function YouTubeEmbed({ url }: { url: string }) {
   );
 }
 
-// ─── Media block ──────────────────────────────────────────────────────────────
-function MediaBlock({ project }: { project: StaticProject }) {
-  const [activeIdx, setActiveIdx] = useState(0);
-
-  // Build media list: local images first, then video
+// ─── Media Carousel — автослайдшоу 5с + стрелки по краям + цикл ──────────────
+function MediaCarousel({ project }: { project: StaticProject }) {
   const imageFiles = project.images ?? (project.cover ? [project.cover] : []);
   const hasLocalMedia = imageFiles.length > 0 || !!project.videoUrl;
 
-  if (!hasLocalMedia && !project.youtubeUrl) return null;
-
-  if (project.youtubeUrl && !hasLocalMedia) {
-    return <div className="mb-6"><YouTubeEmbed url={project.youtubeUrl} /></div>;
-  }
-
-  const allItems: { type: "image" | "video"; src: string }[] = [
+  // Собираем все слайды
+  const slides: { type: "image" | "video"; src: string }[] = [
     ...imageFiles.map((f) => ({ type: "image" as const, src: projectAssetUrl(project.id, f) })),
     ...(project.videoUrl ? [{ type: "video" as const, src: projectAssetUrl(project.id, project.videoUrl) }] : []),
   ];
 
-  const current = allItems[activeIdx];
+  const [idx, setIdx] = useState(0);
+  const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+
+  // Автослайдшоу — перезапускаем при ручном переключении
+  const startTimer = useCallback(() => {
+    if (timerRef.current) clearInterval(timerRef.current);
+    if (slides.length <= 1) return;
+    timerRef.current = setInterval(() => {
+      setIdx((i) => (i + 1) % slides.length);
+    }, 5000);
+  }, [slides.length]);
+
+  useEffect(() => {
+    startTimer();
+    return () => { if (timerRef.current) clearInterval(timerRef.current); };
+  }, [startTimer]);
+
+  const goTo = (i: number) => {
+    setIdx((i + slides.length) % slides.length);
+    startTimer(); // сбросить таймер при ручном переходе
+  };
+
+  const prev = () => goTo(idx - 1);
+  const next = () => goTo(idx + 1);
+
+  if (!hasLocalMedia && !project.youtubeUrl) return null;
+  if (project.youtubeUrl && !hasLocalMedia) {
+    return <div className="mb-6"><YouTubeEmbed url={project.youtubeUrl} /></div>;
+  }
+
+  const current = slides[idx];
 
   return (
     <div className="mb-6">
+      {/* Главный слайд */}
       <div style={{
+        position: "relative",
         borderRadius: "var(--radius-md)", overflow: "hidden", aspectRatio: "16/9",
-        background: "var(--color-surface-offset)", marginBottom: allItems.length > 1 ? "var(--space-3)" : 0,
+        background: "var(--color-surface-offset)",
+        marginBottom: slides.length > 1 ? "var(--space-3)" : 0,
       }}>
-        {current.type === "image" ? (
-          <img src={current.src} alt={project.title}
-            style={{ width: "100%", height: "100%", objectFit: "cover" }} />
-        ) : (
-          <video src={current.src} controls
-            style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+        {/* Слайды с fade-переходом */}
+        {slides.map((slide, i) => (
+          <div key={i} style={{
+            position: "absolute", inset: 0,
+            opacity: i === idx ? 1 : 0,
+            transition: "opacity 0.5s ease",
+            pointerEvents: i === idx ? "auto" : "none",
+          }}>
+            {slide.type === "image" ? (
+              <img src={slide.src} alt={project.title}
+                style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+            ) : (
+              <video src={slide.src} controls
+                style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+            )}
+          </div>
+        ))}
+
+        {/* Стрелки по краям — только если слайдов больше одного */}
+        {slides.length > 1 && (
+          <>
+            {/* Левая зона — клик = предыдущий */}
+            <button onClick={prev} aria-label="Предыдущий слайд" style={{
+              position: "absolute", left: 0, top: 0, bottom: 0, width: "30%",
+              background: "linear-gradient(to right, rgba(0,0,0,0.25), transparent)",
+              border: "none", cursor: "pointer", zIndex: 2,
+              display: "flex", alignItems: "center", justifyContent: "flex-start",
+              paddingLeft: "12px", opacity: 0, transition: "opacity 0.2s",
+            }}
+              onMouseEnter={(e) => (e.currentTarget.style.opacity = "1")}
+              onMouseLeave={(e) => (e.currentTarget.style.opacity = "0")}
+            >
+              <span style={{
+                fontSize: "1.4rem", color: "#fff",
+                background: "rgba(0,0,0,0.45)", borderRadius: "50%",
+                width: "36px", height: "36px", display: "flex", alignItems: "center", justifyContent: "center",
+              }}>‹</span>
+            </button>
+
+            {/* Правая зона — клик = следующий */}
+            <button onClick={next} aria-label="Следующий слайд" style={{
+              position: "absolute", right: 0, top: 0, bottom: 0, width: "30%",
+              background: "linear-gradient(to left, rgba(0,0,0,0.25), transparent)",
+              border: "none", cursor: "pointer", zIndex: 2,
+              display: "flex", alignItems: "center", justifyContent: "flex-end",
+              paddingRight: "12px", opacity: 0, transition: "opacity 0.2s",
+            }}
+              onMouseEnter={(e) => (e.currentTarget.style.opacity = "1")}
+              onMouseLeave={(e) => (e.currentTarget.style.opacity = "0")}
+            >
+              <span style={{
+                fontSize: "1.4rem", color: "#fff",
+                background: "rgba(0,0,0,0.45)", borderRadius: "50%",
+                width: "36px", height: "36px", display: "flex", alignItems: "center", justifyContent: "center",
+              }}>›</span>
+            </button>
+
+            {/* Точки-индикаторы */}
+            <div style={{
+              position: "absolute", bottom: "10px", left: 0, right: 0,
+              display: "flex", justifyContent: "center", gap: "6px", zIndex: 3,
+            }}>
+              {slides.map((_, i) => (
+                <button key={i} onClick={() => goTo(i)} aria-label={`Слайд ${i + 1}`} style={{
+                  width: i === idx ? "20px" : "6px", height: "6px",
+                  borderRadius: "3px",
+                  background: i === idx ? "var(--color-primary)" : "rgba(255,255,255,0.45)",
+                  border: "none", cursor: "pointer", padding: 0,
+                  transition: "all 0.3s ease",
+                }} />
+              ))}
+            </div>
+          </>
         )}
       </div>
-      {allItems.length > 1 && (
+
+      {/* Миниатюры — если слайдов больше одного */}
+      {slides.length > 1 && (
         <div className="flex gap-2" style={{ overflowX: "auto", scrollbarWidth: "none" }}>
-          {allItems.map((item, i) => (
-            <button key={i} onClick={() => setActiveIdx(i)} style={{
-              flexShrink: 0, width: "60px", height: "60px", borderRadius: "var(--radius-sm)",
-              overflow: "hidden",
-              border: i === activeIdx ? "2px solid var(--color-primary)" : "2px solid transparent",
-              opacity: i === activeIdx ? 1 : 0.5,
+          {slides.map((slide, i) => (
+            <button key={i} onClick={() => goTo(i)} aria-label={`Слайд ${i + 1}`} style={{
+              flexShrink: 0, width: "60px", height: "60px",
+              borderRadius: "var(--radius-sm)", overflow: "hidden",
+              border: i === idx ? "2px solid var(--color-primary)" : "2px solid transparent",
+              opacity: i === idx ? 1 : 0.5,
               transition: "all var(--transition-interactive)",
               background: "var(--color-surface-offset)",
-            }} aria-label={`Слайд ${i + 1}`}>
-              {item.type === "image" ? (
-                <img src={item.src} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+            }}>
+              {slide.type === "image" ? (
+                <img src={slide.src} alt="" style={{ width: "100%", height: "100%", objectFit: "cover" }} />
               ) : (
-                <div style={{ width: "100%", height: "100%", display: "flex", alignItems: "center", justifyContent: "center", color: "var(--color-primary)", fontSize: "1.2rem" }}>▶</div>
+                <div style={{ width: "100%", height: "100%", display: "flex", alignItems: "center",
+                  justifyContent: "center", color: "var(--color-primary)", fontSize: "1.2rem" }}>▶</div>
               )}
             </button>
           ))}
@@ -87,7 +182,7 @@ function MediaBlock({ project }: { project: StaticProject }) {
   );
 }
 
-// ─── No-media typographic hero ────────────────────────────────────────────────
+// ─── No-media typographic placeholder ────────────────────────────────────────
 function TypographicHero({ project }: { project: StaticProject }) {
   const catLabel = CATEGORY_LABELS[project.category] ?? project.category;
   return (
@@ -114,14 +209,12 @@ function TypographicHero({ project }: { project: StaticProject }) {
 // ─── Project Modal ────────────────────────────────────────────────────────────
 export default function ProjectModal({ project, onClose }: Props) {
   const backdropRef = useRef<HTMLDivElement>(null);
-  const panelRef = useRef<HTMLDivElement>(null);
-  const stack = project.stack ?? [];
-  const catLabel = CATEGORY_LABELS[project.category] ?? project.category;
-  const hasMedia =
+  const panelRef    = useRef<HTMLDivElement>(null);
+  const stack       = project.stack ?? [];
+  const catLabel    = CATEGORY_LABELS[project.category] ?? project.category;
+  const hasMedia    =
     (project.images && project.images.length > 0) ||
-    !!project.cover ||
-    !!project.videoUrl ||
-    !!project.youtubeUrl;
+    !!project.cover || !!project.videoUrl || !!project.youtubeUrl;
 
   const handleClose = useCallback(() => {
     if (panelRef.current) {
@@ -136,10 +229,7 @@ export default function ProjectModal({ project, onClose }: Props) {
     const handler = (e: KeyboardEvent) => { if (e.key === "Escape") handleClose(); };
     document.addEventListener("keydown", handler);
     document.body.style.overflow = "hidden";
-    return () => {
-      document.removeEventListener("keydown", handler);
-      document.body.style.overflow = "";
-    };
+    return () => { document.removeEventListener("keydown", handler); document.body.style.overflow = ""; };
   }, [handleClose]);
 
   useEffect(() => {
@@ -153,131 +243,85 @@ export default function ProjectModal({ project, onClose }: Props) {
   }, []);
 
   return (
-    <div
-      ref={backdropRef}
-      className="modal-backdrop"
+    <div ref={backdropRef} className="modal-backdrop"
       style={{ opacity: 0, transition: "opacity 0.3s var(--ease-out)" }}
       onClick={(e) => e.target === backdropRef.current && handleClose()}
-      role="dialog" aria-modal="true" aria-label={project.title}
-      data-testid="project-modal"
-    >
-      <div
-        ref={panelRef}
-        className="modal-panel"
-        style={{
-          opacity: 0,
-          transform: "scale(0.94) translateY(20px)",
-          transition: "opacity 0.35s var(--ease-out), transform 0.35s var(--ease-out)",
-        }}
-      >
+      role="dialog" aria-modal="true" aria-label={project.title} data-testid="project-modal">
+
+      <div ref={panelRef} className="modal-panel" style={{
+        opacity: 0, transform: "scale(0.94) translateY(20px)",
+        transition: "opacity 0.35s var(--ease-out), transform 0.35s var(--ease-out)",
+      }}>
         {/* Header */}
         <div style={{
           display: "flex", alignItems: "center", justifyContent: "space-between",
-          padding: "var(--space-5) var(--space-6)",
-          borderBottom: "1px solid var(--color-border)", flexShrink: 0,
+          padding: "var(--space-5) var(--space-6)", borderBottom: "1px solid var(--color-border)", flexShrink: 0,
         }}>
           <div className="flex items-center gap-3 min-w-0">
             <span className="tag tag-primary">{catLabel}</span>
             <h2 className="font-display font-semibold truncate"
-              style={{ fontSize: "var(--text-lg)", lineHeight: 1.2 }}>
-              {project.title}
-            </h2>
+              style={{ fontSize: "var(--text-lg)", lineHeight: 1.2 }}>{project.title}</h2>
           </div>
-          <button
-            onClick={handleClose}
-            aria-label="Закрыть"
-            data-testid="modal-close"
-            style={{
-              width: "36px", height: "36px", display: "flex", alignItems: "center",
-              justifyContent: "center", borderRadius: "var(--radius-md)",
-              color: "var(--color-text-muted)", background: "transparent",
-              border: "1px solid var(--color-border)", fontSize: "1.1rem", flexShrink: 0,
-              transition: "all var(--transition-interactive)",
-            }}
-            onMouseEnter={(e) => {
-              (e.currentTarget as HTMLButtonElement).style.color = "var(--color-text)";
-              (e.currentTarget as HTMLButtonElement).style.background = "var(--color-surface-offset)";
-            }}
-            onMouseLeave={(e) => {
-              (e.currentTarget as HTMLButtonElement).style.color = "var(--color-text-muted)";
-              (e.currentTarget as HTMLButtonElement).style.background = "transparent";
-            }}
-          >✕</button>
+          <button onClick={handleClose} aria-label="Закрыть" data-testid="modal-close" style={{
+            width: "36px", height: "36px", display: "flex", alignItems: "center", justifyContent: "center",
+            borderRadius: "var(--radius-md)", color: "var(--color-text-muted)", background: "transparent",
+            border: "1px solid var(--color-border)", fontSize: "1.1rem", flexShrink: 0,
+            transition: "all var(--transition-interactive)",
+          }}
+            onMouseEnter={(e) => { (e.currentTarget as HTMLButtonElement).style.color = "var(--color-text)"; (e.currentTarget as HTMLButtonElement).style.background = "var(--color-surface-offset)"; }}
+            onMouseLeave={(e) => { (e.currentTarget as HTMLButtonElement).style.color = "var(--color-text-muted)"; (e.currentTarget as HTMLButtonElement).style.background = "transparent"; }}>
+            ✕
+          </button>
         </div>
 
-        {/* Scrollable body */}
+        {/* Body */}
         <div style={{ overflowY: "auto", padding: "var(--space-6)", flex: 1 }}>
-          {/* Media or typographic placeholder */}
-          {hasMedia ? <MediaBlock project={project} /> : <TypographicHero project={project} />}
+          {hasMedia ? <MediaCarousel project={project} /> : <TypographicHero project={project} />}
 
-          {/* Meta: role + category */}
+          {/* Meta */}
           <div className="grid grid-cols-2 gap-4 mb-6">
-            <div style={{
-              padding: "var(--space-4)", background: "var(--color-surface-2)",
-              borderRadius: "var(--radius-md)", border: "1px solid var(--color-border)",
-            }}>
+            <div style={{ padding: "var(--space-4)", background: "var(--color-surface-2)",
+              borderRadius: "var(--radius-md)", border: "1px solid var(--color-border)" }}>
               <div className="admin-label mb-1">Моя роль</div>
-              <div style={{ fontSize: "var(--text-sm)", color: "var(--color-text)", fontWeight: 500 }}>
-                {project.role}
-              </div>
+              <div style={{ fontSize: "var(--text-sm)", color: "var(--color-text)", fontWeight: 500 }}>{project.role}</div>
             </div>
-            <div style={{
-              padding: "var(--space-4)", background: "var(--color-surface-2)",
-              borderRadius: "var(--radius-md)", border: "1px solid var(--color-border)",
-            }}>
+            <div style={{ padding: "var(--space-4)", background: "var(--color-surface-2)",
+              borderRadius: "var(--radius-md)", border: "1px solid var(--color-border)" }}>
               <div className="admin-label mb-1">Категория</div>
               <div className="flex items-center gap-2" style={{ marginTop: "4px" }}>
                 <span className="tag tag-primary" style={{ fontSize: "11px" }}>{catLabel}</span>
                 {project.featured && (
-                  <span className="tag" style={{
-                    fontSize: "11px", color: "var(--color-primary)",
-                    borderColor: "rgba(232,168,56,0.3)", background: "var(--color-primary-dim)",
-                  }}>★ featured</span>
+                  <span className="tag" style={{ fontSize: "11px", color: "var(--color-primary)",
+                    borderColor: "rgba(232,168,56,0.3)", background: "var(--color-primary-dim)" }}>★ featured</span>
                 )}
               </div>
             </div>
           </div>
 
-          {/* Short description */}
-          <p style={{
-            fontSize: "var(--text-lg)", color: "var(--color-text-muted)",
-            fontWeight: 300, lineHeight: 1.5, marginBottom: "var(--space-5)",
-          }}>{project.shortDescription}</p>
+          <p style={{ fontSize: "var(--text-lg)", color: "var(--color-text-muted)", fontWeight: 300,
+            lineHeight: 1.5, marginBottom: "var(--space-5)" }}>{project.shortDescription}</p>
 
-          {/* Context */}
           {project.context && (
             <div className="mb-5">
               <div className="admin-label mb-2">Контекст / задача</div>
-              <p style={{ fontSize: "var(--text-base)", color: "var(--color-text-muted)", lineHeight: 1.65 }}>
-                {project.context}
-              </p>
+              <p style={{ fontSize: "var(--text-base)", color: "var(--color-text-muted)", lineHeight: 1.65 }}>{project.context}</p>
             </div>
           )}
 
-          {/* Full description */}
           <div className="mb-5">
             <div className="admin-label mb-2">Описание</div>
-            <p style={{ fontSize: "var(--text-base)", color: "var(--color-text-muted)", lineHeight: 1.7 }}>
-              {project.fullDescription}
-            </p>
+            <p style={{ fontSize: "var(--text-base)", color: "var(--color-text-muted)", lineHeight: 1.7 }}>{project.fullDescription}</p>
           </div>
 
-          {/* Result */}
           {project.result && (
-            <div className="mb-6" style={{
-              padding: "var(--space-4) var(--space-5)",
-              background: "var(--color-primary-dim)",
-              border: "1px solid rgba(232,168,56,0.2)",
-              borderRadius: "var(--radius-md)",
-            }}>
+            <div className="mb-6" style={{ padding: "var(--space-4) var(--space-5)",
+              background: "var(--color-primary-dim)", border: "1px solid rgba(232,168,56,0.2)",
+              borderRadius: "var(--radius-md)" }}>
               <div className="admin-label mb-2" style={{ color: "rgba(232,168,56,0.6)" }}>Результат</div>
-              <p style={{ fontSize: "var(--text-sm)", color: "var(--color-primary)", fontWeight: 500, lineHeight: 1.6 }}>
-                {project.result}
-              </p>
+              <p style={{ fontSize: "var(--text-sm)", color: "var(--color-primary)", fontWeight: 500, lineHeight: 1.6 }}>{project.result}</p>
             </div>
           )}
 
-          {/* Full stack */}
           {stack.length > 0 && (
             <div className="mb-5">
               <div className="admin-label mb-3">Стек технологий</div>
@@ -287,7 +331,6 @@ export default function ProjectModal({ project, onClose }: Props) {
             </div>
           )}
 
-          {/* Actions */}
           <div className="flex gap-3 flex-wrap pt-2">
             {project.githubUrl && (
               <a href={project.githubUrl} target="_blank" rel="noopener noreferrer"
