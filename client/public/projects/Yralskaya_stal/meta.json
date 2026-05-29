@@ -8,7 +8,7 @@
   "context": "Комерческий проект, задача - разработать реалистичную демонстрацию работы разных цехов, с помощью анимации.",
   "result": "Приложение прошло тестирование на предприятии и принято. На данный момент размещено и работаботает на предприятии.",
   "category": "unity",
-  "featured": true,
+  "featured": false,
   "cover": "logo.jpg",
   "images": ["main.jpg", "ceh.jpg", "info.jpg", "animation.jpg"],
   "githubUrl": "https://github.com/Vinishk0",
