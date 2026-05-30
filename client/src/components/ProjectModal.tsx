@@ -28,27 +28,33 @@ function YouTubeEmbed({ url }: { url: string }) {
   );
 }
 
-// ─── Media Carousel — автослайдшоу 5с + стрелки по краям + цикл ──────────────
+// ─── Media Carousel — автослайдшоу 5с + стрелки + вертикальные фото ──────────
 function MediaCarousel({ project }: { project: StaticProject }) {
   const imageFiles = project.images ?? (project.cover ? [project.cover] : []);
   const hasLocalMedia = imageFiles.length > 0 || !!project.videoUrl;
 
-  // Собираем все слайды
   const slides: { type: "image" | "video"; src: string }[] = [
     ...imageFiles.map((f) => ({ type: "image" as const, src: projectAssetUrl(project.id, f) })),
     ...(project.videoUrl ? [{ type: "video" as const, src: projectAssetUrl(project.id, project.videoUrl) }] : []),
   ];
 
   const [idx, setIdx] = useState(0);
+  // null = ещё не знаем, true = вертикальные, false = горизонтальные
+  const [isVertical, setIsVertical] = useState<boolean | null>(null);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
-  // Автослайдшоу — перезапускаем при ручном переключении
+  // Определяем ориентацию по первому изображению
+  useEffect(() => {
+    if (slides.length === 0 || slides[0].type !== "image") return;
+    const img = new Image();
+    img.onload = () => setIsVertical(img.naturalHeight > img.naturalWidth);
+    img.src = slides[0].src;
+  }, [slides[0]?.src]);
+
   const startTimer = useCallback(() => {
     if (timerRef.current) clearInterval(timerRef.current);
     if (slides.length <= 1) return;
-    timerRef.current = setInterval(() => {
-      setIdx((i) => (i + 1) % slides.length);
-    }, 5000);
+    timerRef.current = setInterval(() => setIdx((i) => (i + 1) % slides.length), 5000);
   }, [slides.length]);
 
   useEffect(() => {
@@ -56,11 +62,7 @@ function MediaCarousel({ project }: { project: StaticProject }) {
     return () => { if (timerRef.current) clearInterval(timerRef.current); };
   }, [startTimer]);
 
-  const goTo = (i: number) => {
-    setIdx((i + slides.length) % slides.length);
-    startTimer(); // сбросить таймер при ручном переходе
-  };
-
+  const goTo = (i: number) => { setIdx((i + slides.length) % slides.length); startTimer(); };
   const prev = () => goTo(idx - 1);
   const next = () => goTo(idx + 1);
 
@@ -69,86 +71,93 @@ function MediaCarousel({ project }: { project: StaticProject }) {
     return <div className="mb-6"><YouTubeEmbed url={project.youtubeUrl} /></div>;
   }
 
-  const current = slides[idx];
+  // Вертикальный режим: фото в своём натуральном размере на тёмном фоне
+  // Горизонтальный: обычный 16/9 crop
+  const containerStyle: React.CSSProperties = isVertical
+    ? {
+        position: "relative",
+        borderRadius: "var(--radius-md)",
+        overflow: "hidden",
+        background: "var(--color-surface-offset)",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        minHeight: "360px",
+        maxHeight: "520px",
+        marginBottom: slides.length > 1 ? "var(--space-3)" : 0,
+      }
+    : {
+        position: "relative",
+        borderRadius: "var(--radius-md)",
+        overflow: "hidden",
+        aspectRatio: "16/9",
+        background: "var(--color-surface-offset)",
+        marginBottom: slides.length > 1 ? "var(--space-3)" : 0,
+      };
 
   return (
     <div className="mb-6">
-      {/* Главный слайд */}
-      <div style={{
-        position: "relative",
-        borderRadius: "var(--radius-md)", overflow: "hidden", aspectRatio: "16/9",
-        background: "var(--color-surface-offset)",
-        marginBottom: slides.length > 1 ? "var(--space-3)" : 0,
-      }}>
-        {/* Слайды с fade-переходом */}
+      <div style={containerStyle}>
         {slides.map((slide, i) => (
           <div key={i} style={{
-            position: "absolute", inset: 0,
-            opacity: i === idx ? 1 : 0,
-            transition: "opacity 0.5s ease",
+            position: isVertical ? "relative" : "absolute",
+            inset: isVertical ? undefined : 0,
+            display: isVertical ? (i === idx ? "flex" : "none") : "block",
+            alignItems: "center",
+            justifyContent: "center",
+            width: "100%",
+            height: "100%",
+            opacity: isVertical ? 1 : (i === idx ? 1 : 0),
+            transition: isVertical ? undefined : "opacity 0.5s ease",
             pointerEvents: i === idx ? "auto" : "none",
           }}>
             {slide.type === "image" ? (
-              <img src={slide.src} alt={project.title}
-                style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+              <img src={slide.src} alt={project.title} style={
+                isVertical
+                  ? { maxWidth: "100%", maxHeight: "520px", objectFit: "contain", borderRadius: "var(--radius-sm)" }
+                  : { position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover" }
+              } />
             ) : (
-              <video src={slide.src} controls
-                style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+              <video src={slide.src} controls style={{ width: "100%", height: "100%", objectFit: isVertical ? "contain" : "cover" }} />
             )}
           </div>
         ))}
 
-        {/* Стрелки по краям — только если слайдов больше одного */}
         {slides.length > 1 && (
           <>
-            {/* Левая зона — клик = предыдущий */}
             <button onClick={prev} aria-label="Предыдущий слайд" style={{
               position: "absolute", left: 0, top: 0, bottom: 0, width: "30%",
-              background: "linear-gradient(to right, rgba(0,0,0,0.25), transparent)",
+              background: "linear-gradient(to right, rgba(0,0,0,0.2), transparent)",
               border: "none", cursor: "pointer", zIndex: 2,
               display: "flex", alignItems: "center", justifyContent: "flex-start",
               paddingLeft: "12px", opacity: 0, transition: "opacity 0.2s",
             }}
               onMouseEnter={(e) => (e.currentTarget.style.opacity = "1")}
-              onMouseLeave={(e) => (e.currentTarget.style.opacity = "0")}
-            >
-              <span style={{
-                fontSize: "1.4rem", color: "#fff",
-                background: "rgba(0,0,0,0.45)", borderRadius: "50%",
-                width: "36px", height: "36px", display: "flex", alignItems: "center", justifyContent: "center",
-              }}>‹</span>
+              onMouseLeave={(e) => (e.currentTarget.style.opacity = "0")}>
+              <span style={{ fontSize: "1.4rem", color: "#fff", background: "rgba(0,0,0,0.5)",
+                borderRadius: "50%", width: "36px", height: "36px",
+                display: "flex", alignItems: "center", justifyContent: "center" }}>‹</span>
             </button>
-
-            {/* Правая зона — клик = следующий */}
             <button onClick={next} aria-label="Следующий слайд" style={{
               position: "absolute", right: 0, top: 0, bottom: 0, width: "30%",
-              background: "linear-gradient(to left, rgba(0,0,0,0.25), transparent)",
+              background: "linear-gradient(to left, rgba(0,0,0,0.2), transparent)",
               border: "none", cursor: "pointer", zIndex: 2,
               display: "flex", alignItems: "center", justifyContent: "flex-end",
               paddingRight: "12px", opacity: 0, transition: "opacity 0.2s",
             }}
               onMouseEnter={(e) => (e.currentTarget.style.opacity = "1")}
-              onMouseLeave={(e) => (e.currentTarget.style.opacity = "0")}
-            >
-              <span style={{
-                fontSize: "1.4rem", color: "#fff",
-                background: "rgba(0,0,0,0.45)", borderRadius: "50%",
-                width: "36px", height: "36px", display: "flex", alignItems: "center", justifyContent: "center",
-              }}>›</span>
+              onMouseLeave={(e) => (e.currentTarget.style.opacity = "0")}>
+              <span style={{ fontSize: "1.4rem", color: "#fff", background: "rgba(0,0,0,0.5)",
+                borderRadius: "50%", width: "36px", height: "36px",
+                display: "flex", alignItems: "center", justifyContent: "center" }}>›</span>
             </button>
-
-            {/* Точки-индикаторы */}
-            <div style={{
-              position: "absolute", bottom: "10px", left: 0, right: 0,
-              display: "flex", justifyContent: "center", gap: "6px", zIndex: 3,
-            }}>
+            <div style={{ position: "absolute", bottom: "10px", left: 0, right: 0,
+              display: "flex", justifyContent: "center", gap: "6px", zIndex: 3 }}>
               {slides.map((_, i) => (
                 <button key={i} onClick={() => goTo(i)} aria-label={`Слайд ${i + 1}`} style={{
-                  width: i === idx ? "20px" : "6px", height: "6px",
-                  borderRadius: "3px",
+                  width: i === idx ? "20px" : "6px", height: "6px", borderRadius: "3px",
                   background: i === idx ? "var(--color-primary)" : "rgba(255,255,255,0.45)",
-                  border: "none", cursor: "pointer", padding: 0,
-                  transition: "all 0.3s ease",
+                  border: "none", cursor: "pointer", padding: 0, transition: "all 0.3s ease",
                 }} />
               ))}
             </div>
@@ -156,7 +165,7 @@ function MediaCarousel({ project }: { project: StaticProject }) {
         )}
       </div>
 
-      {/* Миниатюры — если слайдов больше одного */}
+      {/* Миниатюры */}
       {slides.length > 1 && (
         <div className="flex gap-2" style={{ overflowX: "auto", scrollbarWidth: "none" }}>
           {slides.map((slide, i) => (

@@ -437,15 +437,7 @@ export default function Portfolio() {
             </div>
           </div>
         </div>
-        <div className="absolute bottom-8 left-1/2 -translate-x-1/2 flex flex-col items-center"
-          aria-hidden="true">
-          <div style={{
-            width: "1px", height: "48px",
-            background: "linear-gradient(to bottom, var(--color-primary), transparent)",
-            animation: "pulse-line 2s ease-in-out infinite",
-          }} />
-        </div>
-        <style>{`@keyframes pulse-line { 0%,100%{opacity:0.3} 50%{opacity:1} }`}</style>
+
       </section>
 
       {/* ── About ───────────────────────────────────────────────────────── */}
