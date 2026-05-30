@@ -13,7 +13,6 @@
     "floatingOrbs":       true,
     "gridBackground":     true,
     "hero3D":             true,
-    "miniGame":           true,
     "timeline":           true,
     "hobbiesAccordion":   true,
     "downloadCV":         true,
@@ -38,8 +37,5 @@
     "_comment": "Положи og-image.jpg (1200x630) в client/public/"
   },
 
-  "miniGame": {
-    "title": "Gravity Drop",
-    "_comment": "Простая игра — шарик падает, уклоняйся от платформ"
-  }
+  "_info": "Убери miniGame из features выше если хочешь скрыть секцию игры"
 }

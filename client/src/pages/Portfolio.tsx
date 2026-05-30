@@ -24,7 +24,7 @@ function useSiteConfig() {
   const [cfg, setCfg] = useState<SiteConfig>({
     features: { customCursor:true, scrollProgress:true, noiseTexture:true, parallaxHero:true,
       typingEffect:true, cardHoverZoom:true, cardEnterAnimation:true, cursorGlow:true,
-      floatingOrbs:true, gridBackground:true, hero3D:true, miniGame:true,
+      floatingOrbs:true, gridBackground:true, hero3D:true,
       timeline:true, hobbiesAccordion:true, downloadCV:true },
     hero: { typingWords:["Unity Developer","VR Developer","AR Developer",".NET Developer"], typingSpeed:80, typingPause:2000 },
     cv: { filename:"Kurlaev_CV.pdf" },
@@ -252,7 +252,6 @@ function HeroScene({ enabled }: { enabled: boolean }) {
     const camera = new THREE.PerspectiveCamera(45, w/h, 0.1, 100);
     camera.position.set(0, 0, 5);
 
-    // Основная геометрия — икосаэдр
     const geo = new THREE.IcosahedronGeometry(1.3, 1);
     const mat = new THREE.MeshStandardMaterial({
       color: 0xe8a838, wireframe: true, opacity: 0.35, transparent: true,
@@ -260,7 +259,6 @@ function HeroScene({ enabled }: { enabled: boolean }) {
     const mesh = new THREE.Mesh(geo, mat);
     scene.add(mesh);
 
-    // Второй слой — сфера wireframe меньше
     const geo2 = new THREE.OctahedronGeometry(0.85, 2);
     const mat2 = new THREE.MeshStandardMaterial({
       color: 0x5b8fb9, wireframe: true, opacity: 0.2, transparent: true,
@@ -268,7 +266,6 @@ function HeroScene({ enabled }: { enabled: boolean }) {
     const mesh2 = new THREE.Mesh(geo2, mat2);
     scene.add(mesh2);
 
-    // Частицы
     const particleCount = 120;
     const pGeo = new THREE.BufferGeometry();
     const positions = new Float32Array(particleCount * 3);
@@ -282,7 +279,6 @@ function HeroScene({ enabled }: { enabled: boolean }) {
     const particles = new THREE.Points(pGeo, pMat);
     scene.add(particles);
 
-    // Освещение
     scene.add(new THREE.AmbientLight(0xffffff, 0.5));
     const dLight = new THREE.DirectionalLight(0xe8a838, 1.5);
     dLight.position.set(3, 3, 3);
@@ -291,7 +287,6 @@ function HeroScene({ enabled }: { enabled: boolean }) {
     pLight.position.set(-3, -2, 2);
     scene.add(pLight);
 
-    // Реакция на мышь
     const mouse = { x:0, y:0 };
     const onMouse = (e: MouseEvent) => {
       mouse.x = (e.clientX / window.innerWidth - 0.5) * 2;
@@ -373,7 +368,8 @@ function TypingText({ words, speed, pause, enabled }: { words:string[]; speed:nu
   );
 }
 
-// ─── Timeline ──────────────────────────────────────────────────────────────────
+// ─── Timeline Slider ───────────────────────────────────────────────────────────
+// Горизонтальный слайдер — любое количество пунктов из JSON, прокручивается отдельно
 const TYPE_COLORS: Record<string, string> = {
   education:"var(--color-primary)", work:"var(--color-secondary)", project:"rgba(255,255,255,0.4)"
 };
@@ -381,42 +377,159 @@ const TYPE_LABELS: Record<string, string> = {
   education:"Образование", work:"Работа", project:"Проект"
 };
 
-function Timeline({ items, enabled }: { items: AboutData["timeline"]; enabled: boolean }) {
+function TimelineSlider({ items, enabled }: { items: AboutData["timeline"]; enabled: boolean }) {
+  const [active, setActive] = useState(0);
+  const trackRef = useRef<HTMLDivElement>(null);
+
   if (!enabled || items.length === 0) return null;
+
+  const goTo = (i: number) => {
+    setActive(i);
+  };
+
+  const prev = () => setActive(a => Math.max(0, a - 1));
+  const next = () => setActive(a => Math.min(items.length - 1, a + 1));
+
   return (
-    <div className="reveal" style={{ position:"relative", paddingLeft:"28px" }}>
-      {/* Вертикальная линия */}
+    <div className="reveal">
+      {/* Track — горизонтальная лента карточек */}
+      <div style={{ position:"relative", overflow:"hidden" }}>
+        <div
+          ref={trackRef}
+          style={{
+            display:"flex",
+            gap:"var(--space-4)",
+            transition:"transform 0.55s cubic-bezier(0.16,1,0.3,1)",
+            transform:`translateX(calc(-${active} * (100% + var(--space-4))))`,
+          }}
+        >
+          {items.map((item, i) => {
+            const color = TYPE_COLORS[item.type] ?? "var(--color-primary)";
+            const isActive = i === active;
+            return (
+              <div
+                key={i}
+                style={{
+                  minWidth:"100%",
+                  padding:"var(--space-6)",
+                  background: isActive
+                    ? "linear-gradient(135deg, var(--color-surface) 0%, var(--color-surface-2) 100%)"
+                    : "var(--color-surface)",
+                  border:`1px solid ${isActive ? color : "var(--color-border)"}`,
+                  borderRadius:"var(--radius-lg)",
+                  transition:"border-color 0.4s, background 0.4s",
+                  boxShadow: isActive ? `0 0 24px ${color}22` : "none",
+                }}
+              >
+                {/* Тип + год */}
+                <div style={{ display:"flex", alignItems:"center", gap:"var(--space-3)", marginBottom:"var(--space-4)" }}>
+                  <span style={{
+                    display:"inline-flex", alignItems:"center", justifyContent:"center",
+                    padding:"2px 10px", borderRadius:"var(--radius-full)",
+                    background:`${color}22`, border:`1px solid ${color}55`,
+                    fontSize:"10px", fontWeight:700, letterSpacing:"0.1em", textTransform:"uppercase",
+                    color,
+                  }}>
+                    {TYPE_LABELS[item.type] ?? item.type}
+                  </span>
+                  <span style={{
+                    fontSize:"var(--text-xs)", color:"var(--color-text-faint)",
+                    fontFamily:"var(--font-mono, monospace)", fontWeight:600,
+                    letterSpacing:"0.06em",
+                  }}>
+                    {item.year}
+                  </span>
+                </div>
+
+                {/* Заголовок */}
+                <div style={{
+                  fontSize:"var(--text-lg)", fontWeight:700,
+                  fontFamily:"var(--font-display)", color:"var(--color-text)",
+                  marginBottom:"var(--space-3)", lineHeight:1.2,
+                }}>
+                  {item.title}
+                </div>
+
+                {/* Описание */}
+                <div style={{
+                  fontSize:"var(--text-sm)", color:"var(--color-text-muted)",
+                  lineHeight:1.7,
+                }}>
+                  {item.description}
+                </div>
+
+                {/* Цветной accent-bar снизу */}
+                <div style={{
+                  marginTop:"var(--space-5)", height:"2px", borderRadius:"1px",
+                  background:`linear-gradient(90deg, ${color}, transparent)`,
+                  opacity: isActive ? 1 : 0,
+                  transition:"opacity 0.4s",
+                }}/>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* Навигация: точки + стрелки */}
       <div style={{
-        position:"absolute", left:"9px", top:"8px", bottom:"8px", width:"1px",
-        background:"linear-gradient(to bottom, var(--color-primary), transparent)",
-      }}/>
-      <div style={{ display:"flex", flexDirection:"column", gap:"var(--space-6)" }}>
-        {items.map((item, i) => (
-          <div key={i} style={{ position:"relative" }}>
-            {/* Точка */}
-            <div style={{
-              position:"absolute", left:"-23px", top:"6px",
-              width:"10px", height:"10px", borderRadius:"50%",
-              background:TYPE_COLORS[item.type] ?? "var(--color-primary)",
-              boxShadow:`0 0 8px ${TYPE_COLORS[item.type] ?? "var(--color-primary)"}`,
-            }}/>
-            <div style={{ display:"flex", alignItems:"center", gap:"var(--space-2)", marginBottom:"4px" }}>
-              <span style={{
-                fontSize:"10px", fontWeight:700, letterSpacing:"0.1em", textTransform:"uppercase",
-                color:TYPE_COLORS[item.type], opacity:0.8,
-              }}>{TYPE_LABELS[item.type]}</span>
-              <span style={{ fontSize:"var(--text-xs)", color:"var(--color-text-faint)", fontFamily:"var(--font-mono, monospace)" }}>
-                {item.year}
-              </span>
-            </div>
-            <div style={{ fontSize:"var(--text-sm)", fontWeight:600, color:"var(--color-text)", marginBottom:"4px" }}>
-              {item.title}
-            </div>
-            <div style={{ fontSize:"var(--text-xs)", color:"var(--color-text-muted)", lineHeight:1.6 }}>
-              {item.description}
-            </div>
-          </div>
-        ))}
+        display:"flex", alignItems:"center", justifyContent:"space-between",
+        marginTop:"var(--space-4)", gap:"var(--space-3)",
+      }}>
+        <button
+          onClick={prev}
+          disabled={active === 0}
+          style={{
+            width:"32px", height:"32px", borderRadius:"50%",
+            border:"1px solid var(--color-border)", background:"none",
+            color: active === 0 ? "var(--color-text-faint)" : "var(--color-primary)",
+            cursor: active === 0 ? "default" : "pointer",
+            fontSize:"14px", display:"flex", alignItems:"center", justifyContent:"center",
+            transition:"all 0.2s",
+          }}
+          aria-label="Предыдущий"
+        >‹</button>
+
+        {/* Точки */}
+        <div style={{ display:"flex", gap:"6px", flex:1, justifyContent:"center", flexWrap:"wrap" }}>
+          {items.map((_, i) => (
+            <button
+              key={i}
+              onClick={() => goTo(i)}
+              style={{
+                width: i === active ? "20px" : "6px",
+                height:"6px", borderRadius:"3px",
+                background: i === active ? "var(--color-primary)" : "var(--color-border)",
+                border:"none", cursor:"pointer", padding:0,
+                transition:"all 0.35s cubic-bezier(0.16,1,0.3,1)",
+              }}
+              aria-label={`Пункт ${i + 1}`}
+            />
+          ))}
+        </div>
+
+        <button
+          onClick={next}
+          disabled={active === items.length - 1}
+          style={{
+            width:"32px", height:"32px", borderRadius:"50%",
+            border:"1px solid var(--color-border)", background:"none",
+            color: active === items.length - 1 ? "var(--color-text-faint)" : "var(--color-primary)",
+            cursor: active === items.length - 1 ? "default" : "pointer",
+            fontSize:"14px", display:"flex", alignItems:"center", justifyContent:"center",
+            transition:"all 0.2s",
+          }}
+          aria-label="Следующий"
+        >›</button>
+      </div>
+
+      {/* Счётчик */}
+      <div style={{
+        textAlign:"center", marginTop:"var(--space-2)",
+        fontSize:"10px", color:"var(--color-text-faint)",
+        letterSpacing:"0.08em", fontFamily:"var(--font-mono, monospace)",
+      }}>
+        {String(active + 1).padStart(2, "0")} / {String(items.length).padStart(2, "0")}
       </div>
     </div>
   );
@@ -440,6 +553,137 @@ function FactsRow({ facts }: { facts: AboutData["facts"] }) {
           <div style={{ fontSize:"var(--text-xs)", color:"var(--color-text-faint)", marginTop:"2px" }}>{f.label}</div>
         </div>
       ))}
+    </div>
+  );
+}
+
+// ─── About Hero Visual — заполняет пустое место красиво ───────────────────────
+// Показывается когда нет фото. Animated SVG «цифровой портрет» / constellation.
+function AboutVisual() {
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+
+    const W = 300, H = 300;
+    canvas.width = W; canvas.height = H;
+
+    // Созвездие — случайные узлы, связанные линиями
+    const NODE_COUNT = 28;
+    interface Node { x: number; y: number; vx: number; vy: number; r: number }
+    const nodes: Node[] = Array.from({ length: NODE_COUNT }, () => ({
+      x: 20 + Math.random() * (W - 40),
+      y: 20 + Math.random() * (H - 40),
+      vx: (Math.random() - 0.5) * 0.35,
+      vy: (Math.random() - 0.5) * 0.35,
+      r: 1.5 + Math.random() * 2,
+    }));
+
+    const LINK_DIST = 100;
+    let rafId: number;
+    let t = 0;
+
+    const draw = () => {
+      t++;
+      ctx.clearRect(0, 0, W, H);
+
+      // Слабый фоновый круг
+      const grad = ctx.createRadialGradient(W/2, H/2, 0, W/2, H/2, W/2);
+      grad.addColorStop(0, "rgba(232,168,56,0.04)");
+      grad.addColorStop(1, "transparent");
+      ctx.fillStyle = grad;
+      ctx.fillRect(0, 0, W, H);
+
+      // Двигаем узлы
+      for (const n of nodes) {
+        n.x += n.vx; n.y += n.vy;
+        if (n.x < 10 || n.x > W-10) n.vx *= -1;
+        if (n.y < 10 || n.y > H-10) n.vy *= -1;
+      }
+
+      // Линии между близкими узлами
+      for (let i = 0; i < nodes.length; i++) {
+        for (let j = i + 1; j < nodes.length; j++) {
+          const dx = nodes[i].x - nodes[j].x;
+          const dy = nodes[i].y - nodes[j].y;
+          const d = Math.sqrt(dx*dx + dy*dy);
+          if (d < LINK_DIST) {
+            const alpha = (1 - d / LINK_DIST) * 0.25;
+            ctx.strokeStyle = `rgba(232,168,56,${alpha})`;
+            ctx.lineWidth = 0.8;
+            ctx.beginPath();
+            ctx.moveTo(nodes[i].x, nodes[i].y);
+            ctx.lineTo(nodes[j].x, nodes[j].y);
+            ctx.stroke();
+          }
+        }
+      }
+
+      // Точки
+      for (const n of nodes) {
+        const pulse = Math.sin(t * 0.04 + n.x * 0.05) * 0.3 + 0.7;
+        ctx.shadowColor = "#e8a838";
+        ctx.shadowBlur = 6;
+        ctx.fillStyle = `rgba(232,168,56,${0.6 * pulse})`;
+        ctx.beginPath();
+        ctx.arc(n.x, n.y, n.r, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.shadowBlur = 0;
+      }
+
+      // Центральный акцент — пульсирующий круг
+      const pulseR = 18 + Math.sin(t * 0.05) * 4;
+      const cg = ctx.createRadialGradient(W/2, H/2, 0, W/2, H/2, pulseR);
+      cg.addColorStop(0, "rgba(232,168,56,0.3)");
+      cg.addColorStop(1, "transparent");
+      ctx.fillStyle = cg;
+      ctx.beginPath();
+      ctx.arc(W/2, H/2, pulseR, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Маленький центральный dot
+      ctx.shadowColor = "#e8a838";
+      ctx.shadowBlur = 12;
+      ctx.fillStyle = "#e8a838";
+      ctx.beginPath();
+      ctx.arc(W/2, H/2, 3, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.shadowBlur = 0;
+
+      rafId = requestAnimationFrame(draw);
+    };
+    rafId = requestAnimationFrame(draw);
+    return () => cancelAnimationFrame(rafId);
+  }, []);
+
+  return (
+    <div className="reveal" style={{
+      position:"relative", width:"200px", height:"200px", flexShrink:0,
+    }}>
+      {/* Внешнее кольцо */}
+      <div style={{
+        position:"absolute", inset:0, borderRadius:"50%",
+        border:"1px solid rgba(232,168,56,0.18)",
+        animation:"spin-slow 20s linear infinite",
+      }}/>
+      <div style={{
+        position:"absolute", inset:"12px", borderRadius:"50%",
+        border:"1px dashed rgba(91,143,185,0.15)",
+        animation:"spin-slow 28s linear infinite reverse",
+      }}/>
+      <canvas
+        ref={canvasRef}
+        style={{
+          position:"absolute", inset:0, width:"100%", height:"100%",
+          borderRadius:"50%",
+          background:"radial-gradient(circle at center, rgba(232,168,56,0.04) 0%, transparent 70%)",
+        }}
+      />
+      <style>{`
+        @keyframes spin-slow { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+      `}</style>
     </div>
   );
 }
@@ -511,163 +755,6 @@ function HobbiesAccordion({ hobbies, enabled }: { hobbies: AboutData["hobbies"];
           ))}
         </div>
       </div>
-    </div>
-  );
-}
-
-// ─── Mini Game — Gravity Dodge ──────────────────────────────────────────────────
-function MiniGame({ enabled }: { enabled: boolean }) {
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-  const stateRef  = useRef<{ running:boolean; raf:number }>({ running:false, raf:0 });
-  const [started, setStarted] = useState(false);
-  const [score, setScore]     = useState(0);
-  const [best, setBest]       = useState(0);
-  const [dead, setDead]       = useState(false);
-
-  const startGame = useCallback(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const ctx = canvas.getContext("2d");
-    if (!ctx) return;
-    cancelAnimationFrame(stateRef.current.raf);
-    setDead(false); setStarted(true); setScore(0);
-
-    const W = canvas.width = canvas.offsetWidth;
-    const H = canvas.height = canvas.offsetHeight;
-
-    // Player — светящийся шар
-    const player = { x: W/2, y: H*0.25, r:10, vx:0, vy:0, alive:true };
-    const gravity = 0.25;
-    const keys: Record<string,boolean> = {};
-
-    // Препятствия — горизонтальные платформы с дыркой
-    interface Obstacle { y:number; gapX:number; gapW:number; speed:number; passed:boolean }
-    const obstacles: Obstacle[] = [];
-    let frame = 0;
-    let sc = 0;
-
-    const spawnObs = () => {
-      const gapW = W * 0.3;
-      const gapX = Math.random() * (W - gapW - 40) + 20;
-      obstacles.push({ y:-10, gapX, gapW, speed: 1.4 + sc*0.04, passed:false });
-    };
-    spawnObs();
-
-    const onKey  = (e:KeyboardEvent)  => { keys[e.code] = e.type==="keydown"; e.preventDefault(); };
-    const onTouch = (e:TouchEvent) => { keys["Space"] = e.type==="touchstart"; };
-    window.addEventListener("keydown", onKey);
-    window.addEventListener("keyup",   onKey);
-    canvas.addEventListener("touchstart", onTouch);
-    canvas.addEventListener("touchend",   onTouch);
-
-    const loop = () => {
-      if (!player.alive) return;
-      frame++;
-      ctx.clearRect(0,0,W,H);
-
-      // BG
-      ctx.fillStyle = "#0d0d0f";
-      ctx.fillRect(0,0,W,H);
-
-      // Gravity & input
-      player.vy += gravity;
-      if (keys["Space"] || keys["ArrowUp"] || keys["KeyW"]) player.vy -= 0.55;
-      player.vy = Math.max(-6, Math.min(player.vy, 8));
-      player.y += player.vy;
-      if (player.y - player.r < 0) { player.y = player.r; player.vy = 0; }
-      if (player.y + player.r > H) { player.alive = false; }
-
-      // Spawn
-      if (frame % 90 === 0) spawnObs();
-
-      // Obstacles
-      for (const obs of obstacles) {
-        obs.y += obs.speed;
-        ctx.fillStyle = "rgba(91,143,185,0.7)";
-        ctx.fillRect(0, obs.y, obs.gapX, 8);
-        ctx.fillRect(obs.gapX + obs.gapW, obs.y, W, 8);
-        // glow
-        ctx.shadowColor = "#5b8fb9"; ctx.shadowBlur = 10;
-        ctx.fillStyle = "#5b8fb9";
-        ctx.fillRect(0, obs.y, obs.gapX, 8);
-        ctx.fillRect(obs.gapX + obs.gapW, obs.y, W, 8);
-        ctx.shadowBlur = 0;
-
-        // Score
-        if (!obs.passed && obs.y > player.y) { obs.passed = true; sc++; setScore(sc); }
-
-        // Collision
-        if (player.y + player.r > obs.y && player.y - player.r < obs.y + 8) {
-          if (player.x - player.r < obs.gapX || player.x + player.r > obs.gapX + obs.gapW) {
-            player.alive = false;
-          }
-        }
-      }
-
-      // Trim offscreen
-      while (obstacles.length && obstacles[0].y > H+20) obstacles.shift();
-
-      // Draw player — янтарный шар с glow
-      ctx.shadowColor = "#e8a838"; ctx.shadowBlur = 18;
-      ctx.beginPath(); ctx.arc(player.x, player.y, player.r, 0, Math.PI*2);
-      ctx.fillStyle = "#e8a838"; ctx.fill();
-      ctx.shadowBlur = 0;
-
-      // Score
-      ctx.fillStyle = "rgba(255,255,255,0.35)";
-      ctx.font = "13px monospace";
-      ctx.fillText(`${sc}`, 12, 22);
-
-      if (!player.alive) {
-        setBest(b => { const nb = Math.max(b, sc); return nb; });
-        setDead(true); setStarted(false);
-        window.removeEventListener("keydown", onKey);
-        window.removeEventListener("keyup",   onKey);
-        return;
-      }
-
-      stateRef.current.raf = requestAnimationFrame(loop);
-    };
-    stateRef.current.raf = requestAnimationFrame(loop);
-
-    return () => {
-      window.removeEventListener("keydown", onKey);
-      window.removeEventListener("keyup",   onKey);
-    };
-  }, []);
-
-  useEffect(() => { return () => cancelAnimationFrame(stateRef.current.raf); }, []);
-  if (!enabled) return null;
-
-  return (
-    <div style={{ position:"relative", borderRadius:"var(--radius-md)", overflow:"hidden",
-      border:"1px solid var(--color-border)", background:"#0d0d0f" }}>
-      <canvas ref={canvasRef} style={{ display:"block", width:"100%", height:"220px", touchAction:"none" }}/>
-
-      {!started && (
-        <div style={{
-          position:"absolute", inset:0, display:"flex", flexDirection:"column",
-          alignItems:"center", justifyContent:"center", gap:"var(--space-3)",
-          background:"rgba(13,13,15,0.82)", backdropFilter:"blur(4px)",
-        }}>
-          {dead && (
-            <div style={{ textAlign:"center", marginBottom:"var(--space-2)" }}>
-              <div style={{ fontSize:"var(--text-xl)", color:"var(--color-primary)", fontFamily:"var(--font-display)", fontWeight:700 }}>
-                {score}
-              </div>
-              <div style={{ fontSize:"var(--text-xs)", color:"var(--color-text-faint)" }}>
-                рекорд: {best}
-              </div>
-            </div>
-          )}
-          <button onClick={startGame} className="btn-primary" style={{ fontSize:"var(--text-xs)" }}>
-            {dead ? "Ещё раз" : "▶ Играть"}
-          </button>
-          <div style={{ fontSize:"10px", color:"var(--color-text-faint)", letterSpacing:"0.08em" }}>
-            SPACE / ↑ / TAP — антигравитация
-          </div>
-        </div>
-      )}
     </div>
   );
 }
@@ -758,7 +845,7 @@ const TECH_STACK = [
   { label:"Python", note:"автоматизация" }, { label:"QA методологии", note:"тестирование" },
 ];
 
-// ─── About Carousel ────────────────────────────────────────────────────────────
+// ─── About Carousel (фото) ────────────────────────────────────────────────────
 function AboutCarousel({ photos }: { photos:string[] }) {
   const [idx,setIdx]=useState(0);
   useEffect(()=>{
@@ -849,14 +936,14 @@ export default function Portfolio() {
         <div className="container flex items-center justify-between" style={{ paddingBlock:"var(--space-4)" }}>
           <button onClick={()=>scrollTo("hero")} style={{ color:"var(--color-primary)" }} aria-label="На главную"><Logo/></button>
           <div className="hidden md:flex items-center gap-8">
-            {[["about","Обо мне"],["projects","Проекты"],["game","Игра"],["contact","Контакты"]].map(([id,label])=>(
+            {[["about","Обо мне"],["projects","Проекты"],["contact","Контакты"]].map(([id,label])=>(
               <button key={id} className="nav-link" onClick={()=>scrollTo(id)}>{label}</button>
             ))}
           </div>
           <div className="flex items-center gap-3">
             {feat.downloadCV && (
               <a href={`/${cfg.cv.filename}`} download className="btn-ghost"
-                style={{ fontSize:"var(--text-xs)" }}>↓ CV</a>
+                style={{ fontSize:"var(--text-xs)" }}>↓ Скачать CV</a>
             )}
             <button className="btn-primary" onClick={()=>scrollTo("contact")} style={{ fontSize:"var(--text-xs)" }}>
               Связаться
@@ -890,9 +977,6 @@ export default function Portfolio() {
               <button className="btn-primary" onClick={()=>scrollTo("projects")}>
                 <span>Посмотреть работы</span><span>↓</span>
               </button>
-              {feat.downloadCV && (
-                <a href={`/${cfg.cv.filename}`} download className="btn-ghost">↓ Скачать CV</a>
-              )}
               <a href="https://github.com/Vinishk0" target="_blank" rel="noopener noreferrer" className="btn-ghost">GitHub</a>
             </div>
           </div>
@@ -913,7 +997,11 @@ export default function Portfolio() {
           <div className="grid md:grid-cols-2 gap-16 items-start">
             {/* Left col */}
             <div className="flex flex-col gap-6">
-              {about.photos.length>0&&<AboutCarousel photos={about.photos}/>}
+              {/* Фото или анимированный визуал */}
+              {about.photos.length > 0
+                ? <AboutCarousel photos={about.photos}/>
+                : <AboutVisual />
+              }
               <div>
                 <h2 className="reveal font-display font-bold mb-6" style={{ fontSize:"var(--text-2xl)", lineHeight:1.1 }}>
                   Я строю миры<br/><span style={{ color:"var(--color-primary)" }}>из кода</span>
@@ -944,7 +1032,7 @@ export default function Portfolio() {
               <div>
                 <h3 className="reveal font-display font-semibold mb-6"
                   style={{ fontSize:"var(--text-lg)", color:"var(--color-text-muted)" }}>Путь</h3>
-                <Timeline items={about.timeline} enabled={feat.timeline}/>
+                <TimelineSlider items={about.timeline} enabled={feat.timeline}/>
               </div>
             </div>
           </div>
@@ -988,25 +1076,6 @@ export default function Portfolio() {
         </div>
       </section>
 
-      {/* ── Mini Game ── */}
-      {feat.miniGame && (
-        <section id="game" className="section-padding" style={{ position:"relative", zIndex:1 }}>
-          <div className="container" style={{ maxWidth:"540px" }}>
-            <div className="reveal mb-3 flex items-center gap-3">
-              <span style={{ fontSize:"var(--text-xs)", fontWeight:600, letterSpacing:"0.12em", textTransform:"uppercase", color:"var(--color-primary)" }}>Мини-игра</span>
-            </div>
-            <hr className="hr-amber mb-6 reveal"/>
-            <div className="reveal mb-6">
-              <h2 className="font-display font-bold mb-2" style={{ fontSize:"var(--text-xl)" }}>Gravity Drop</h2>
-              <p style={{ fontSize:"var(--text-sm)", color:"var(--color-text-muted)" }}>
-                Шарик падает — удерживай его в дыре. Управление: пробел / стрелка вверх / тап.
-              </p>
-            </div>
-            <MiniGame enabled={feat.miniGame}/>
-          </div>
-        </section>
-      )}
-
       {/* ── Contact ── */}
       <section id="contact" className="section-padding" style={{ position:"relative", zIndex:1 }}>
         <div className="container">
@@ -1026,9 +1095,6 @@ export default function Portfolio() {
               <a href="https://t.me/Vinishk000" className="btn-ghost" target="_blank" rel="noopener noreferrer">Telegram</a>
               <a href="https://vk.com/vinishk0o0" className="btn-ghost" target="_blank" rel="noopener noreferrer">VK</a>
               <a href="https://github.com/Vinishk0" className="btn-ghost" target="_blank" rel="noopener noreferrer">GitHub</a>
-              {feat.downloadCV&&(
-                <a href={`/${cfg.cv.filename}`} download className="btn-ghost">↓ Скачать CV</a>
-              )}
             </div>
           </div>
         </div>
