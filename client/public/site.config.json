@@ -1,0 +1,45 @@
+{
+  "_comment": "Включай/выключай фичи: true = включено, false = выключено",
+
+  "features": {
+    "customCursor":       true,
+    "scrollProgress":     true,
+    "noiseTexture":       true,
+    "parallaxHero":       true,
+    "typingEffect":       true,
+    "cardHoverZoom":      true,
+    "cardEnterAnimation": true,
+    "cursorGlow":         true,
+    "floatingOrbs":       true,
+    "gridBackground":     true,
+    "hero3D":             true,
+    "miniGame":           true,
+    "timeline":           true,
+    "hobbiesAccordion":   true,
+    "downloadCV":         true,
+    "openGraph":          true
+  },
+
+  "hero": {
+    "typingWords": ["Unity Developer", "VR Developer", "AR Developer", ".NET Developer", "Game Designer"],
+    "typingSpeed": 80,
+    "typingPause": 2000
+  },
+
+  "cv": {
+    "filename": "Kurlaev_CV.pdf",
+    "_comment": "Положи PDF в client/public/ и укажи имя файла выше"
+  },
+
+  "openGraph": {
+    "title": "Никита Курлаев — Unity / VR / AR Developer",
+    "description": "Разрабатываю иммерсивные VR/AR опыты и игровые системы на Unity. Портфолио.",
+    "image": "/og-image.jpg",
+    "_comment": "Положи og-image.jpg (1200x630) в client/public/"
+  },
+
+  "miniGame": {
+    "title": "Gravity Drop",
+    "_comment": "Простая игра — шарик падает, уклоняйся от платформ"
+  }
+}
