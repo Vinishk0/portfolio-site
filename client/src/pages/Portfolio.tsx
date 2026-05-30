@@ -1032,7 +1032,7 @@ export default function Portfolio() {
               {/* Фото над заголовком — строго квадратное */}
               {about.photos.length > 0 && (
                 <div className="reveal" style={{
-                  width:"100%",
+                  width:"50%",
                   aspectRatio:"1 / 1",
                   borderRadius:"var(--radius-lg)",
                   overflow:"hidden",
