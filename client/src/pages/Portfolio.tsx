@@ -557,41 +557,47 @@ function FactsRow({ facts }: { facts: AboutData["facts"] }) {
   );
 }
 
-// ─── About Hero Visual — заполняет пустое место красиво ───────────────────────
-// Показывается когда нет фото. Animated SVG «цифровой портрет» / constellation.
+// ─── About Visual — constellation, адаптивный, под «Не только код» ─────────────
 function AboutVisual() {
-  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const canvasRef  = useRef<HTMLCanvasElement>(null);
+  const wrapperRef = useRef<HTMLDivElement>(null);
+
   useEffect(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
+    const canvas  = canvasRef.current;
+    const wrapper = wrapperRef.current;
+    if (!canvas || !wrapper) return;
     const ctx = canvas.getContext("2d");
     if (!ctx) return;
 
-    const W = 300, H = 300;
-    canvas.width = W; canvas.height = H;
-
-    // Созвездие — случайные узлы, связанные линиями
-    const NODE_COUNT = 28;
-    interface Node { x: number; y: number; vx: number; vy: number; r: number }
-    const nodes: Node[] = Array.from({ length: NODE_COUNT }, () => ({
-      x: 20 + Math.random() * (W - 40),
-      y: 20 + Math.random() * (H - 40),
-      vx: (Math.random() - 0.5) * 0.35,
-      vy: (Math.random() - 0.5) * 0.35,
-      r: 1.5 + Math.random() * 2,
-    }));
-
-    const LINK_DIST = 100;
-    let rafId: number;
+    let W = 0, H = 0;
+    let rafId = 0;
     let t = 0;
+
+    interface Node { x: number; y: number; vx: number; vy: number; r: number }
+    let nodes: Node[] = [];
+    const LINK_DIST = 130;
+
+    const init = (w: number, h: number) => {
+      W = w; H = h;
+      canvas.width  = W;
+      canvas.height = H;
+      const count = Math.round(30 + (W / 400) * 18); // больше узлов на широком экране
+      nodes = Array.from({ length: count }, () => ({
+        x:  20 + Math.random() * (W - 40),
+        y:  20 + Math.random() * (H - 40),
+        vx: (Math.random() - 0.5) * 0.35,
+        vy: (Math.random() - 0.5) * 0.35,
+        r:  1.5 + Math.random() * 2,
+      }));
+    };
 
     const draw = () => {
       t++;
       ctx.clearRect(0, 0, W, H);
 
-      // Слабый фоновый круг
-      const grad = ctx.createRadialGradient(W/2, H/2, 0, W/2, H/2, W/2);
-      grad.addColorStop(0, "rgba(232,168,56,0.04)");
+      // Лёгкий фоновый градиент по центру
+      const grad = ctx.createRadialGradient(W/2, H/2, 0, W/2, H/2, Math.min(W, H) * 0.5);
+      grad.addColorStop(0, "rgba(232,168,56,0.05)");
       grad.addColorStop(1, "transparent");
       ctx.fillStyle = grad;
       ctx.fillRect(0, 0, W, H);
@@ -599,20 +605,20 @@ function AboutVisual() {
       // Двигаем узлы
       for (const n of nodes) {
         n.x += n.vx; n.y += n.vy;
-        if (n.x < 10 || n.x > W-10) n.vx *= -1;
-        if (n.y < 10 || n.y > H-10) n.vy *= -1;
+        if (n.x < 10 || n.x > W - 10) n.vx *= -1;
+        if (n.y < 10 || n.y > H - 10) n.vy *= -1;
       }
 
-      // Линии между близкими узлами
+      // Линии
       for (let i = 0; i < nodes.length; i++) {
         for (let j = i + 1; j < nodes.length; j++) {
           const dx = nodes[i].x - nodes[j].x;
           const dy = nodes[i].y - nodes[j].y;
-          const d = Math.sqrt(dx*dx + dy*dy);
+          const d  = Math.sqrt(dx * dx + dy * dy);
           if (d < LINK_DIST) {
-            const alpha = (1 - d / LINK_DIST) * 0.25;
+            const alpha = (1 - d / LINK_DIST) * 0.22;
             ctx.strokeStyle = `rgba(232,168,56,${alpha})`;
-            ctx.lineWidth = 0.8;
+            ctx.lineWidth = 0.7;
             ctx.beginPath();
             ctx.moveTo(nodes[i].x, nodes[i].y);
             ctx.lineTo(nodes[j].x, nodes[j].y);
@@ -625,28 +631,27 @@ function AboutVisual() {
       for (const n of nodes) {
         const pulse = Math.sin(t * 0.04 + n.x * 0.05) * 0.3 + 0.7;
         ctx.shadowColor = "#e8a838";
-        ctx.shadowBlur = 6;
-        ctx.fillStyle = `rgba(232,168,56,${0.6 * pulse})`;
+        ctx.shadowBlur  = 7;
+        ctx.fillStyle   = `rgba(232,168,56,${0.65 * pulse})`;
         ctx.beginPath();
         ctx.arc(n.x, n.y, n.r, 0, Math.PI * 2);
         ctx.fill();
         ctx.shadowBlur = 0;
       }
 
-      // Центральный акцент — пульсирующий круг
-      const pulseR = 18 + Math.sin(t * 0.05) * 4;
-      const cg = ctx.createRadialGradient(W/2, H/2, 0, W/2, H/2, pulseR);
-      cg.addColorStop(0, "rgba(232,168,56,0.3)");
+      // Пульсирующий акцент по центру
+      const pr = 20 + Math.sin(t * 0.05) * 5;
+      const cg = ctx.createRadialGradient(W/2, H/2, 0, W/2, H/2, pr);
+      cg.addColorStop(0, "rgba(232,168,56,0.28)");
       cg.addColorStop(1, "transparent");
       ctx.fillStyle = cg;
       ctx.beginPath();
-      ctx.arc(W/2, H/2, pulseR, 0, Math.PI * 2);
+      ctx.arc(W/2, H/2, pr, 0, Math.PI * 2);
       ctx.fill();
 
-      // Маленький центральный dot
       ctx.shadowColor = "#e8a838";
-      ctx.shadowBlur = 12;
-      ctx.fillStyle = "#e8a838";
+      ctx.shadowBlur  = 14;
+      ctx.fillStyle   = "#e8a838";
       ctx.beginPath();
       ctx.arc(W/2, H/2, 3, 0, Math.PI * 2);
       ctx.fill();
@@ -654,35 +659,62 @@ function AboutVisual() {
 
       rafId = requestAnimationFrame(draw);
     };
-    rafId = requestAnimationFrame(draw);
-    return () => cancelAnimationFrame(rafId);
+
+    // ResizeObserver — реагирует на реальный размер колонки
+    const ro = new ResizeObserver(entries => {
+      const { width, height } = entries[0].contentRect;
+      if (width > 0 && height > 0) {
+        cancelAnimationFrame(rafId);
+        init(Math.round(width), Math.round(height));
+        rafId = requestAnimationFrame(draw);
+      }
+    });
+    ro.observe(wrapper);
+
+    return () => { ro.disconnect(); cancelAnimationFrame(rafId); };
   }, []);
 
+  // Орбитальные кольца — центрированы через flex
+  const ringSize = "min(260px, 90%)";
   return (
-    <div className="reveal" style={{
-      position:"relative", width:"200px", height:"200px", flexShrink:0,
-    }}>
-      {/* Внешнее кольцо */}
-      <div style={{
-        position:"absolute", inset:0, borderRadius:"50%",
-        border:"1px solid rgba(232,168,56,0.18)",
-        animation:"spin-slow 20s linear infinite",
-      }}/>
-      <div style={{
-        position:"absolute", inset:"12px", borderRadius:"50%",
-        border:"1px dashed rgba(91,143,185,0.15)",
-        animation:"spin-slow 28s linear infinite reverse",
-      }}/>
-      <canvas
-        ref={canvasRef}
+    <div className="reveal" style={{ position:"relative", width:"100%" }}>
+      {/* Canvas на всю ширину */}
+      <div
+        ref={wrapperRef}
         style={{
-          position:"absolute", inset:0, width:"100%", height:"100%",
-          borderRadius:"50%",
-          background:"radial-gradient(circle at center, rgba(232,168,56,0.04) 0%, transparent 70%)",
+          position:"relative", width:"100%", height:"180px",
+          overflow:"hidden",
+          background:"radial-gradient(ellipse at center, rgba(232,168,56,0.04) 0%, transparent 70%)",
+          borderRadius:"var(--radius-lg)",
+          border:"1px solid var(--color-border)",
         }}
-      />
+      >
+        <canvas ref={canvasRef} style={{ position:"absolute", inset:0, width:"100%", height:"100%" }}/>
+
+        {/* Кольца по центру поверх canvas */}
+        <div style={{
+          position:"absolute", inset:0,
+          display:"flex", alignItems:"center", justifyContent:"center",
+          pointerEvents:"none",
+        }}>
+          <div style={{
+            position:"absolute",
+            width:ringSize, height:ringSize,
+            borderRadius:"50%",
+            border:"1px solid rgba(232,168,56,0.16)",
+            animation:"spin-slow 20s linear infinite",
+          }}/>
+          <div style={{
+            position:"absolute",
+            width:`calc(${ringSize} - 32px)`, height:`calc(${ringSize} - 32px)`,
+            borderRadius:"50%",
+            border:"1px dashed rgba(91,143,185,0.13)",
+            animation:"spin-slow 30s linear infinite reverse",
+          }}/>
+        </div>
+      </div>
       <style>{`
-        @keyframes spin-slow { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+        @keyframes spin-slow { from { transform:rotate(0deg); } to { transform:rotate(360deg); } }
       `}</style>
     </div>
   );
@@ -857,9 +889,9 @@ function AboutCarousel({ photos }: { photos:string[] }) {
   const prev=()=>setIdx(i=>(i-1+photos.length)%photos.length);
   const next=()=>setIdx(i=>(i+1)%photos.length);
   return (
-    <div className="reveal" style={{ position:"relative", width:"200px", flexShrink:0 }}>
-      <div style={{ width:"200px",height:"200px",borderRadius:"var(--radius-lg)",overflow:"hidden",
-        border:"2px solid var(--color-border)",position:"relative" }}>
+    <div className="reveal" style={{ position:"relative", width:"100%" }}>
+      <div style={{ width:"100%", height:"260px", borderRadius:"var(--radius-lg)", overflow:"hidden",
+        border:"1px solid var(--color-border)", position:"relative" }}>
         {photos.map((photo,i)=>(
           <img key={photo} src={`/about/${photo}`} alt={`Фото ${i+1}`} style={{
             position:"absolute",inset:0,width:"100%",height:"100%",objectFit:"cover",
@@ -997,11 +1029,6 @@ export default function Portfolio() {
           <div className="grid md:grid-cols-2 gap-16 items-start">
             {/* Left col */}
             <div className="flex flex-col gap-6">
-              {/* Фото или анимированный визуал */}
-              {about.photos.length > 0
-                ? <AboutCarousel photos={about.photos}/>
-                : <AboutVisual />
-              }
               <div>
                 <h2 className="reveal font-display font-bold mb-6" style={{ fontSize:"var(--text-2xl)", lineHeight:1.1 }}>
                   Я строю миры<br/><span style={{ color:"var(--color-primary)" }}>из кода</span>
@@ -1011,6 +1038,11 @@ export default function Portfolio() {
                 </div>
               </div>
               <HobbiesAccordion hobbies={about.hobbies} enabled={feat.hobbiesAccordion}/>
+              {/* Фото или анимированный визуал — после хобби */}
+              {about.photos.length > 0
+                ? <AboutCarousel photos={about.photos}/>
+                : <AboutVisual />
+              }
             </div>
 
             {/* Right col — Стек + Timeline */}
