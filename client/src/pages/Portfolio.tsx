@@ -1026,23 +1026,46 @@ export default function Portfolio() {
           {/* Facts */}
           <FactsRow facts={about.facts}/>
 
-          <div className="grid md:grid-cols-2 gap-16 items-start">
+          <div className="grid md:grid-cols-2 gap-10 items-start">
             {/* Left col */}
-            <div className="flex flex-col gap-6">
+            <div className="flex flex-col gap-5">
+              {/* Фото над заголовком — строго квадратное */}
+              {about.photos.length > 0 && (
+                <div className="reveal" style={{
+                  width:"100%",
+                  aspectRatio:"1 / 1",
+                  borderRadius:"var(--radius-lg)",
+                  overflow:"hidden",
+                  border:"1px solid var(--color-border)",
+                  position:"relative",
+                }}>
+                  {about.photos.map((photo, i) => (
+                    <img
+                      key={photo}
+                      src={`/about/${photo}`}
+                      alt="Фото"
+                      style={{
+                        position:"absolute", inset:0,
+                        width:"100%", height:"100%",
+                        objectFit:"cover",
+                        objectPosition:"center top",
+                      }}
+                      loading="lazy"
+                    />
+                  ))}
+                </div>
+              )}
               <div>
-                <h2 className="reveal font-display font-bold mb-6" style={{ fontSize:"var(--text-2xl)", lineHeight:1.1 }}>
+                <h2 className="reveal font-display font-bold mb-5" style={{ fontSize:"var(--text-2xl)", lineHeight:1.1 }}>
                   Я строю миры<br/><span style={{ color:"var(--color-primary)" }}>из кода</span>
                 </h2>
-                <div className="reveal space-y-4" style={{ color:"var(--color-text-muted)", fontSize:"var(--text-base)" }}>
+                <div className="reveal space-y-3" style={{ color:"var(--color-text-muted)", fontSize:"var(--text-base)" }}>
                   <p>{about.bio1}</p><p>{about.bio2}</p><p>{about.bio3}</p>
                 </div>
               </div>
               <HobbiesAccordion hobbies={about.hobbies} enabled={feat.hobbiesAccordion}/>
-              {/* Фото или анимированный визуал — после хобби */}
-              {about.photos.length > 0
-                ? <AboutCarousel photos={about.photos}/>
-                : <AboutVisual />
-              }
+              {/* Созвездие — только если фото нет */}
+              {about.photos.length === 0 && <AboutVisual />}
             </div>
 
             {/* Right col — Стек + Timeline */}

@@ -510,7 +510,7 @@ button { cursor: pointer; background: none; border: none; }
 
 /* ─── Section ────────────────────────────────────────────────────────────── */
 .section-padding {
-  padding-block: clamp(var(--space-16), 8vw, var(--space-24));
+  padding-block: clamp(var(--space-12), 5vw, var(--space-16));
 }
 
 .container {
